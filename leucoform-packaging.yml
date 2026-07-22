@@ -1,0 +1,70 @@
+name: Leucoform native packaging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build and self-test
+        shell: pwsh
+        run: ./scripts/build-leucoform.ps1 -Python python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Leucoform-Windows-development
+          path: |
+            dist/installer/Leucoform-Setup.exe
+            dist/SHA256SUMS.json
+            dist/leucoform-sbom.json
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and self-test
+        run: chmod +x scripts/build-leucoform.sh && ./scripts/build-leucoform.sh macos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Leucoform-macOS-development
+          path: |
+            dist/Leucoform.dmg
+            dist/SHA256SUMS
+            dist/leucoform-sbom.json
+
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install native runtime and AppImage tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxcb-cursor0 libfuse2
+          curl -fL -o "$RUNNER_TEMP/appimagetool" https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          echo "APPIMAGETOOL=$RUNNER_TEMP/appimagetool" >> "$GITHUB_ENV"
+      - name: Build and self-test
+        run: chmod +x scripts/build-leucoform.sh packaging/linux/AppRun && ./scripts/build-leucoform.sh linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Leucoform-Linux-development
+          path: |
+            dist/Leucoform.AppImage
+            dist/leucoform_0.1.0_amd64.deb
+            dist/SHA256SUMS
+            dist/leucoform-sbom.json
