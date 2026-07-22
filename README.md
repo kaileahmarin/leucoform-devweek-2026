@@ -1,9 +1,445 @@
-# Leucoform packaging
+# NoTUG
 
-Leucoform is frozen separately on each target operating system. No build cross-compiles Qt or claims another platform's native proof.
+**No Touching Unless Granted** — local change control for coding-agent work.
 
-- Windows: run `scripts/build-leucoform.ps1` in a Python 3.11+ environment with Inno Setup 6. The result is `dist/installer/Leucoform-Setup.exe`.
-- macOS: run `scripts/build-leucoform.sh macos`. The result is `dist/Leucoform.dmg` containing `Leucoform.app`.
-- Linux: set `APPIMAGETOOL` to a trusted local AppImageKit executable and run `scripts/build-leucoform.sh linux`. The results are `dist/Leucoform.AppImage` and `dist/leucoform_0.1.0_amd64.deb`.
+> Version `0.1.0` is a complete locally usable MVP. This release candidate is supplied as a source
+> checkout for local evaluation and defensive workflow use; it has not been independently audited or
+> published to a package index. The install commands below operate on that checkout. See
+> [STATUS.md](STATUS.md) for measured validation evidence and release-review items.
 
-Each build runs Core and offscreen desktop tests, performs a frozen executable self-test, writes a dependency inventory, and hashes the produced files. Release publication is manual. Codesigning, notarization, and package signing are deliberately absent unless maintainers supply credentials in a controlled release environment; unsigned output is a development artifact.
+NoTUG lets an agent edit a disposable Git worktree while keeping the user's primary checkout
+out of the supported agent workflow. When work is ready, NoTUG creates a **Tug Signal**: a local,
+hash-bound proposal containing the patch, change classifications, policy findings, and provenance
+evidence. Nothing is applied to an integration branch until the user runs an explicit grant command
+for that exact signal.
+
+The central rule is simple:
+
+> An agent may write freely inside a disposable workspace, but no change may enter an integration
+> branch through the supported workflow without an explicit human grant.
+
+NoTUG is not a monitoring dashboard, cloud service, or backup product. It is a local mutation-governance
+layer that makes agent changes proposed, attributable, reviewable, and recoverable.
+
+## Leucoform desktop companion
+
+**Leucoform** is the installable human-facing application; **NoTUG** remains its embedded local
+governance engine, protocol, CLI, receipt system, and authority boundary. The optional Qt desktop app
+provides a draggable 200–300 pixel rhombic-triacontahedron companion, tray/menu-bar fallback, compact
+stdin-only Codex composer, normalized live progress, verified Tug review, and a three-face accessible
+Grant ceremony bound to the complete exact Tug hash.
+
+Leucoform discovers an existing Codex installation selected by the user, on `PATH`, in known Codex
+Desktop locations, or at the official npm Node entry point. It verifies and displays the selected
+version. It never bundles or downloads Codex. A run is fixed to the NoTUG-managed worktree and sends the
+prompt through stdin rather than command arguments. Leucoform settings retain only recent repository
+paths, the selected Codex path, companion position, reduced-motion preference, and other UI preferences; they
+do not persist prompts or raw transcripts.
+
+For a source-checkout development launch:
+
+```text
+python -m pip install --editable ".[desktop]"
+leucoform
+```
+
+End users should use an OS-native development installer produced on that same operating system. See
+[`packaging/README.md`](packaging/README.md). Current artifacts are unsigned development builds unless
+the release operator supplies signing credentials. Leucoform performs no telemetry, updater checks,
+automatic merging, pushes, or publication. Full design and operation details are in
+[`docs/LEUCOFORM.md`](docs/LEUCOFORM.md).
+
+## Security boundary in one minute
+
+In supported NoTUG workflows, agent changes occur in a disposable worktree and cannot enter a NoTUG
+integration branch until the user issues an explicit grant.
+
+This is workflow isolation, not process containment. NoTUG `0.1` is not a kernel sandbox, malware
+sandbox, endpoint security product, privilege boundary, or defence against an administrator-level or
+deliberately hostile process. A process running as the same OS user may be able to find and modify other
+paths directly; NoTUG cannot stop that.
+
+Git linked worktrees have another important property: they have separate working directories and
+per-worktree indexes, but share the repository's object database and many refs. Ordinary edits in the
+session do not change the protected checkout. Git operations inside the session can add objects to the
+shared database, and a hostile process with filesystem permission could attempt to change shared refs.
+NoTUG treats the protected checkout, baseline, and authorized integration refs as the governed state;
+it does not claim that a linked worktree is a separate Git storage sandbox. Read the complete
+[threat model](docs/THREAT-MODEL.md) before use.
+
+## How the workflow fits together
+
+```mermaid
+flowchart LR
+    A["Clean protected repository"] --> B["Detached session worktree"]
+    B --> C["Agent edits and local command"]
+    C --> D["Tug Signal and exact patch"]
+    D --> E{"Human decision"}
+    E -->|Deny| F["Denial receipt"]
+    E -->|Grant exact hash| G["Dedicated integration worktree"]
+    G --> H["Validated integration branch"]
+    A -. "primary checkout remains unchanged" .-> H
+```
+
+NoTUG triangulates three views of state:
+
+1. the recorded Git baseline and object graph;
+2. a SHA-256 manifest of tracked files; and
+3. the generated diff plus current filesystem state.
+
+If those views disagree, the operation fails closed. Receipts form an append-only canonical JSONL hash
+chain so deletion, insertion, reordering, or alteration can be detected.
+
+At Tug time, the Signal Lattice binds each captured workspace entry's raw SHA-256, type, size, and
+executable mode, then rereads those bytes before comparing them with the staged tree. For regular files,
+it asks Git to apply only its built-in attribute normalization, such as text and end-of-line handling,
+and requires the resulting blob ID to equal the staged blob ID. Discovered external filters, hooks, and
+custom merge drivers remain inert during this reconciliation. A populated Gitlink must match its staged
+commit pointer and contain no tracked, untracked, or ignored local changes; ambiguity fails closed.
+
+## Requirements
+
+- Python 3.11 or newer
+- Git with linked-worktree support
+- a clean local Git repository with a baseline commit
+- normal write access to an OS-appropriate local data directory
+
+Version `0.1` intentionally refuses non-Git folders and repositories with tracked or untracked changes.
+It also refuses a baseline containing any tracked symbolic link, before creating a session worktree. It
+does not stash, commit, discard, relocate, or repair user work.
+
+## Install locally
+
+Normal use does not require administrator privileges. `pipx` is recommended because it gives the CLI an
+isolated environment. No package-index release is currently available: run these commands from a trusted
+source checkout rather than assuming `pip install notug-protocol` resolves to this project.
+
+### pipx
+
+From the project root:
+
+```text
+pipx install .
+notug --help
+```
+
+Installation may contact a configured Python package index to obtain build tools. Runtime NoTUG
+operations do not intentionally make network calls. For a fully offline install, provide the required
+build tools from a trusted local wheelhouse.
+
+### Editable development install — PowerShell
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --editable ".[dev]"
+notug --help
+```
+
+If `py` is unavailable, invoke a known Python 3.11+ executable directly for the first command.
+
+### Editable development install — Linux or macOS
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --editable '.[dev]'
+notug --help
+```
+
+### Complete development verification
+
+After either editable install, run the complete local verification set:
+
+```text
+python -m ruff format --check .
+python -m ruff check .
+python -m mypy
+python -m pytest
+python scripts/check_docs.py
+python scripts/minimisation_lint.py
+python -m build
+notug --help
+notug demo
+```
+
+`python -m build` writes local wheel and source-distribution candidates under `dist/`; it does not publish
+them. Review generated artifacts separately before any release action.
+
+## First protected workflow
+
+Start with a clean repository and replace each ID placeholder with the value printed by the previous
+command.
+
+### PowerShell
+
+```powershell
+$Repo = "C:\src\example"
+notug init $Repo
+notug doctor $Repo
+notug session start $Repo --name "first-change"
+
+# Use the SESSION_ID and workspace path printed above.
+notug run SESSION_ID -- your-agent-command --its-argument
+
+# Recognized Codex CLI launches are bound to the exact session with -C automatically.
+# On Windows, invoke the JavaScript entry point through node.exe because direct .cmd is refused.
+notug run SESSION_ID -- node.exe C:\path\to\@openai\codex\bin\codex.js exec "your prompt"
+notug tug SESSION_ID
+notug review TUG_ID --diff
+
+# Choose exactly one disposition from an interactive, user-controlled terminal.
+notug deny TUG_ID
+# or: notug grant TUG_ID
+
+notug verify $Repo
+```
+
+### Linux or macOS
+
+```sh
+repo="$HOME/src/example"
+notug init "$repo"
+notug doctor "$repo"
+notug session start "$repo" --name first-change
+
+notug run SESSION_ID -- your-agent-command --its-argument
+notug tug SESSION_ID
+notug review TUG_ID --diff
+
+notug deny TUG_ID
+# or: notug grant TUG_ID
+
+notug verify "$repo"
+```
+
+Run `grant` yourself outside every agent-controlled session. Grant requires an interactive terminal and
+prompts you to type `GRANT TUG_HASH` exactly; there is no public unattended-confirmation flag. The
+ceremony is procedural, not identity authentication: version `0.1` cannot cryptographically distinguish
+a human from another process running under the same OS account. Do not expose the grant step to an
+unattended agent. See [SECURITY.md](docs/SECURITY.md).
+
+`notug run` passes an executable and its arguments without interpreting a shell command line. For a
+recognized `codex` executable or `node ... codex.js` launch, it inserts `-C` with the exact verified
+session worktree. A conflicting caller-supplied `-C` or `--cd` fails before the child starts or a run
+receipt is created. Other agent commands are unchanged.
+Quotes are consumed once by the PowerShell or POSIX shell that launches `notug`, while redirection,
+pipelines, `&&`, globbing, and variable expansion are not added by NoTUG. If shell syntax is genuinely
+required, invoke a shell explicitly, for example `notug run SESSION_ID -- pwsh -NoProfile -Command '...'`
+or `notug run SESSION_ID -- sh -c '...'`. That shell then becomes part of the trusted command and can
+expand or redirect beyond the session. On Windows, direct `.bat` and `.cmd` targets are refused because
+the operating system can reinterpret their arguments through `cmd.exe`; invoke `cmd.exe` explicitly only
+when that shell behavior is intended. Prefer direct argv to a native executable whenever possible.
+
+A successful grant creates a collision-safe branch such as `notug/grant/<short-id>` in a dedicated
+integration worktree, applies only the reviewed patch, runs configured validation, and commits receipt
+identifiers as trailers. The default policy has no validation commands, so configure them explicitly if
+grant must run project checks. Grant does not switch, merge, or edit the primary checkout. Review and
+merge the integration branch using your normal Git process.
+
+## Review, deny, revoke, and revert
+
+`notug review TUG_ID` shows changed paths, risk, deletions, renames, binary metadata, policy reasons,
+baseline state, receipt state, and the exact disposition commands. Repository text is escaped before
+terminal display and is never interpreted as policy or instructions.
+
+Denial records a disposition and leaves the authoritative repository unchanged. Revocation has two
+different meanings:
+
+- If a generated integration branch has not been merged, NoTUG can verify ownership and remove only its
+  own worktree and branch, retain the approved commit under `refs/notug/revoked/<grant-id>` for later
+  verification, then record `REVOKED`.
+- If the change has been merged elsewhere, NoTUG must not rewrite history. The safe response is a
+  dedicated revert branch whose inverse patch and resulting tree are hash-bound for normal review and
+  merge.
+
+Reachability is checked across all Git ref namespaces, not only branches and tags. If a custom ref reaches
+the approved commit but there is no safe local branch on which to prepare a revert, revocation fails with
+`REVERT_TARGET_REQUIRED` and leaves the integration resources in place. Revocation is never permission to
+delete unrelated branches, worktrees, refs, or files.
+
+After a session has a recorded disposition, `notug session archive SESSION_ID` removes only its managed
+session worktree. Before doing so it verifies the Tug artifacts and requires the current workspace to match
+the reviewed manifest exactly. If anything changed after review, it returns `WORKSPACE_POST_REVIEW_DRIFT`
+and preserves the worktree. Inspect the drift, deliberately preserve it elsewhere or remove it, restore the
+reviewed state, and retry; archive has no force flag for discarding post-review bytes. A process with the
+same OS authority can still race the final comparison and Git removal, so stop writers before archiving and
+preserve important session work elsewhere first.
+
+## Export a review receipt
+
+`export` produces a strict JSON receipt for one verified Tug Signal. It never includes patch bytes. By
+default, repository paths are replaced with deterministic aliases scoped to that Tug hash, and symlink
+targets are redacted:
+
+```text
+notug export TUG_ID
+notug export TUG_ID --output tug-receipt.json
+```
+
+Use `--include-paths` only when the recipient needs original repository-relative paths and recorded
+symlink targets. A symlink target can itself be absolute or sensitive, so inspect the JSON before sharing:
+
+```text
+notug export TUG_ID --include-paths --output tug-receipt-with-paths.json
+```
+
+NoTUG refuses to write an export inside the protected repository. Standard output is JSON when
+`--output` is omitted. The export contains an export hash, source artifact hashes, classifications,
+risk, and the current receipt-chain head; it is a disclosure artifact, not a grant or a signed
+attestation.
+
+## Local policy
+
+`notug init` creates or validates a versioned policy in the external local vault; JSON output includes
+the vault root and policy hash. That vault copy is authoritative and its hash is pinned when a session
+starts. A repository file cannot redefine the active policy.
+[examples/notug.toml](examples/notug.toml) is illustrative only.
+
+For repository ID `REPOSITORY_ID`, the authoritative file is:
+
+```text
+<vault-root>/r/REPOSITORY_ID/policy/notug.toml
+```
+
+The default `[validation]` section is `commands = []`; therefore a grant runs no tests, lint, type checks,
+or build commands unless you add argv arrays to this vault policy. Review and edit it only between
+sessions. Session start stores the exact bytes in the immutable, content-addressed snapshot
+`<vault-root>/r/REPOSITORY_ID/policies/<policy-sha256>.toml`. Tug and grant use that snapshot for the
+session's lifetime. Later authoritative-policy edits affect new sessions only, and a conflicting existing
+snapshot causes a fail-closed error instead of being overwritten.
+
+The policy classifies deletions, renames, binary and mode changes, proposed symlinks, external symlink targets,
+submodules, Git internals, product metadata, environment and credential-like paths, CI/deployment files,
+lockfiles, unexpected roots, unsafe paths, and large changes. Unknown fields fail validation.
+
+## Vault location
+
+The default versioned vault root is:
+
+- Windows: `%LOCALAPPDATA%\notug-protocol\v1`, falling back to `%APPDATA%\notug-protocol\v1`;
+- macOS: `~/Library/Application Support/notug-protocol/v1`;
+- Linux and other supported POSIX hosts: `${XDG_DATA_HOME}/notug-protocol/v1` when `XDG_DATA_HOME` is
+  set, otherwise `~/.local/share/notug-protocol/v1`.
+
+Set `NOTUG_HOME` to override the unversioned base directory; the runtime uses `<NOTUG_HOME>/v1`.
+`NOTUG_HOME` must expand to an absolute path so its meaning cannot change with the current directory. The
+vault must remain outside every protected repository.
+
+## Local data and networking
+
+NoTUG has no telemetry, analytics, account, cloud API, automatic issue reporting, or content upload.
+Ordinary receipts do not contain file bodies or environment variables. Patch content is stored only
+where operationally required in the local vault, so the vault can contain sensitive proposed changes
+and must be protected accordingly.
+
+Current `0.1` workspace evidence also stores local SHA-256 hashes, paths, sizes, and modes for ignored
+regular files encountered in the session. Their bytes are not added to the patch merely because they are
+ignored, but a low-entropy value may be guessable from its hash. This is a known local privacy/design
+limitation, not a resolved protection; see [PRIVACY.md](docs/PRIVACY.md).
+
+User-supplied agent and validation commands are separate programs. They may use the network or write
+outside the session if their own permissions allow it; NoTUG does not sandbox or inspect their behaviour.
+See [PRIVACY.md](docs/PRIVACY.md) for the data inventory and minimisation rules.
+
+## Demonstration
+
+```text
+notug demo
+```
+
+The demo creates a temporary synthetic repository and isolated vault, exercises denial and a demo-only
+grant path, verifies that the protected checkout is unchanged, detects receipt tampering, restores the
+original synthetic evidence, and verifies again. It accepts no repository argument and cannot be aimed
+at a real repository. See [docs/DEMO.md](docs/DEMO.md) for its exact scope.
+
+## Known limitations in 0.1
+
+- The boundary is a governed workflow, not OS containment. Same-user or administrator-level processes
+  may address the protected repository, vault, credentials, or network directly.
+- Linked worktrees share Git objects and many refs. NoTUG does not provide an isolated object database.
+- Receipt and artifact hashes are local integrity evidence, not signatures, trusted timestamps, remote
+  attestations, or proof that every relevant event was observed.
+- Git reachability cannot identify an equivalent change introduced by squash, cherry-pick, or manual
+  copying. Treat such cases as merged work and use normal forward-revert review.
+- Session start refuses any tracked baseline symlink with `UNSAFE_BASELINE_SYMLINK` before worktree
+  creation. Symlinks proposed inside a session are still classified, and targets outside the workspace
+  are blocked by default. Creation and reporting depend on OS and Git capabilities, especially on
+  Windows, so ambiguous cases fail closed and version `0.1` is not a complete capability probe.
+- Gitlinks are treated as commit pointers rather than ordinary file trees. A populated Gitlink must
+  match its staged pointer and be completely clean, including ignored files, or Tug fails closed.
+- NoTUG neutralizes repository hooks and discovered clean/smudge filters and custom merge drivers for
+  its own critical Git operations. Built-in Git text/end-of-line normalization is modeled when binding
+  raw workspace bytes to staged blob IDs. The replacement hooks path must be a real empty directory or
+  the operation fails closed. Agent commands, validation tools, Git itself, same-user check/use races,
+  and undiscovered external configuration remain trusted-environment concerns.
+- Tug construction uses collision-checked local staging and removes known incomplete staging artifacts
+  before publication without deleting unexpected content. If evidence has been published but its receipt
+  cannot be committed, that evidence is retained so verification fails closed rather than hiding the
+  interrupted transition.
+- A crash or storage failure can still leave incomplete local state. Verification reverse-maps managed
+  session, integration, and revert worktree directories and registrations, generated branches, and
+  revocation evidence refs to authoritative artifacts and receipts; missing, unclaimed, or failed-grant
+  residue fails closed. Inspection and recovery remain manual rather than automatic.
+- Archive compares files and ordinary directories immediately before forced Git worktree removal, but
+  those are separate filesystem operations. A concurrent same-user writer can create content after the
+  comparison; quiesce writers and preserve valuable work before invoking this destructive cleanup.
+
+The complete boundary and residual risks are in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md).
+
+## Troubleshooting
+
+| Finding or error | Meaning and next step |
+| --- | --- |
+| `SOURCE_REPOSITORY_DIRTY` | Commit, stash, or remove the work yourself after inspection; NoTUG will not do it. |
+| `VAULT_HOME_INVALID` | Set `NOTUG_HOME` to an absolute directory, then rerun the command. |
+| `VAULT_PERMISSION_DENIED` | The selected vault parent is not writable; fix the OS-level location or access. |
+| `VAULT_ROOT_MODE_EXPOSED` | On POSIX, the existing vault root has group/other permission bits; inspect and tighten it manually. |
+| `VAULT_CONFIDENTIALITY_NOT_ASSESSED` | NoTUG did not establish confidentiality; notably, doctor does not inspect Windows ACLs. |
+| `UNSAFE_BASELINE_SYMLINK` | Version `0.1` does not support a tracked symlink in the baseline; no worktree was created. |
+| `WORKSPACE_POST_REVIEW_DRIFT` | The disposed session changed after Tug review. Archive refuses deletion; inspect and preserve the new bytes. |
+| `REVERT_TARGET_REQUIRED` | Another or custom ref reaches the approved commit, but no safe local revert target was found. Preserve resources and choose a reviewed recovery path manually. |
+| `COMMAND_START_FAILED` | Confirm the executable exists and pass each argument as a separate token; invoke a shell explicitly only when shell syntax is intended. |
+| `WINDOWS_BATCH_REQUIRES_EXPLICIT_SHELL` | Direct `.bat`/`.cmd` execution is refused; name `cmd.exe` explicitly only if command-shell parsing is intended. |
+| `AGENT_WORKSPACE_MISMATCH` | A recognized Codex launch selected a directory other than the exact managed session; correct or remove its `-C`/`--cd` option. |
+| `SESSION_ALREADY_ARCHIVED` | The session workspace already has one completed archive receipt; no second removal was attempted. |
+
+Run `notug doctor REPO`, then `notug verify REPO --json`, for structured environmental and provenance
+findings. Neither command repairs or deletes resources.
+
+## Uninstall
+
+```text
+pipx uninstall notug-protocol
+```
+
+or, for a pip environment:
+
+```text
+python -m pip uninstall notug-protocol
+```
+
+Uninstalling the package does not silently remove local vaults, session worktrees, integration branches,
+or receipts. Inspect and dispose of those records deliberately after verification.
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Protocol](docs/PROTOCOL.md)
+- [Threat model](docs/THREAT-MODEL.md)
+- [Privacy](docs/PRIVACY.md)
+- [Security guidance](docs/SECURITY.md)
+- [Demo guide](docs/DEMO.md)
+- [DevWeek submission and claim ledger](docs/DEVWEEK-SUBMISSION.md)
+- [Naming](docs/NAMING.md)
+- [Decisions](docs/DECISIONS.md)
+- [Reference architecture map](docs/REFERENCE-ARCHITECTURE-MAP.md)
+- [Implementation plan](PLAN.md)
+- [Current status](STATUS.md)
+
+The product name is a working codename. Before public distribution, humans must review trademark and
+package-name availability, security claims, CI platform results, dependency and license notices, the
+contents of built artifacts, secret/private-material scans, and installation instructions. The final
+product/package name, canonical public repository/homepage/documentation URLs, private security contact,
+minimum supported Git version, and source-distribution disclosure/inclusion policy remain explicitly
+unresolved. No package has been published by this project.

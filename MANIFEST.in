@@ -1,0 +1,17 @@
+include AGENTS.md
+include CHANGELOG.md
+include LICENSE
+include THIRD-PARTY-NOTICES.md
+include PLAN.md
+include PROMPT.md
+include README.md
+include STATUS.md
+include pyproject.toml
+recursive-include .github *.yml
+recursive-include docs *.md
+recursive-include examples *.toml
+recursive-include scripts *.py
+recursive-include scripts *.ps1 *.sh
+recursive-include packaging *
+recursive-include src/notug_protocol/desktop/assets *.svg
+recursive-include tests *.py
