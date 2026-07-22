@@ -1,0 +1,9 @@
+Package: leucoform
+Version: 0.1.0
+Section: devel
+Priority: optional
+Architecture: amd64
+Maintainer: Leucoform contributors
+Depends: libc6, libgl1, libxkbcommon0
+Description: Leucoform desktop companion powered by NoTUG
+ Local mutation governance and human review for Codex-managed changes.

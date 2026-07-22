@@ -1,0 +1,35 @@
+# Example NoTUG policy. Unknown fields are rejected.
+schema_version = 1
+
+[thresholds]
+max_changed_files = 100
+max_changed_bytes = 10000000
+expected_roots = ["src", "tests", "docs", "examples", ".github"]
+
+[findings]
+deletions = "high"
+renames = "medium"
+binary_files = "high"
+mode_changes = "high"
+symbolic_links = "high"
+outside_symbolic_links = "block"
+submodules = "block"
+git_internals = "block"
+notug_metadata = "block"
+environment_files = "high"
+private_keys = "block"
+credentials = "high"
+ci_deployment = "high"
+lockfiles = "medium"
+outside_expected_roots = "high"
+threshold_exceeded = "high"
+unsafe_paths = "block"
+
+[validation]
+commands = [
+  ["python", "-m", "ruff", "check", "."],
+  ["python", "-m", "pytest", "-q"],
+]
+
+[privacy]
+redact_export_paths = true

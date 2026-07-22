@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Leucoform
+Comment=Desktop companion powered by NoTUG
+Exec=Leucoform
+Icon=leucoform
+Categories=Development;Utility;
+Terminal=false
+StartupNotify=true

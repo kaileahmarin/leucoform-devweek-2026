@@ -1,0 +1,32 @@
+﻿[
+    {
+        "path":  "Leucoform.exe",
+        "sha256":  "9c5ab24810492b6192fe9565e6836de65125f45088df1feef5e3fd7d84e51568",
+        "bytes":  45750745
+    },
+    {
+        "path":  "leucoform-sbom.json",
+        "sha256":  "323387e8ab2e5cc93d1e60544c7739b75ac01c44c78292b7f1ad123bc7a9cc41",
+        "bytes":  198928
+    },
+    {
+        "path":  "LICENSE",
+        "sha256":  "4c6a90853607e96e59c148a938aea530f52f20f9e487c375e7235fc53a8dd352",
+        "bytes":  1095
+    },
+    {
+        "path":  "notug_protocol-0.1.0.tar.gz",
+        "sha256":  "3313f528e214fd72dad24db711bc22164916e1c087935f4a361ec91c44a90d10",
+        "bytes":  255294
+    },
+    {
+        "path":  "notug_protocol-0.1.0-py3-none-any.whl",
+        "sha256":  "d45d7a5ec0b737166857dc6bd29670f7ee5b2f2dc8be77cee1b93c9a97b93ec8",
+        "bytes":  139033
+    },
+    {
+        "path":  "THIRD-PARTY-NOTICES.md",
+        "sha256":  "89272756ef7d8d7fa2ddb2915537647575b7ed3a492d8018054ccef61828f1bd",
+        "bytes":  683
+    }
+]

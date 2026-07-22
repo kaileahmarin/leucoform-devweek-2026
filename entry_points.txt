@@ -1,0 +1,5 @@
+[console_scripts]
+notug = notug_protocol.cli:main
+
+[gui_scripts]
+leucoform = notug_protocol.desktop.main:main
